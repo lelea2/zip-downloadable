@@ -1,0 +1,23 @@
+{
+  "name": "zip-downloadable",
+  "version": "1.0.0",
+  "description": "Create zipdownloadable from s3 using lambda",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lelea2/zip-downloadable.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lelea2/zip-downloadable/issues"
+  },
+  "homepage": "https://github.com/lelea2/zip-downloadable#readme",
+  "dependencies": {
+    "aws-sdk": "^2.244.1",
+    "s3-zip": "^1.0.4"
+  }
+}
