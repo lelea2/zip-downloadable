@@ -1,8 +1,8 @@
-const AWS = require('aws-sdk')
-const s3Zip = require('s3-zip')
+const AWS = require('aws-sdk');
+const s3Zip = require('s3-zip');
 
-exports.handler = function (event, context) {
-  console.log('event', event)
+module.exports.download = (event, context, cb) => {
+  console.log('event', event);
   const { region, bucket, folder, files, zipFileName } = event;
   // Create body stream
   try {
@@ -30,6 +30,6 @@ exports.handler = function (event, context) {
   } catch (e) {
     const err = `catched error: ${e.message}`;
     console.log(err);
-    context.fail(err)
+    context.fail(err);
   }
-}
+};
