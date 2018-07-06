@@ -1,14 +1,103 @@
 service: zip-downloadable
 
+custom:
+  local: local
+  deployStage: ${opt:stage, self:custom.local}
+  config: ${file(src/config/${self:custom.deployStage}.js):default}
+  prune:
+    automatic: true
+    number: 3
+  cors:
+    origins:
+      - '*'
+    headers:
+      - Content-Type
+      - X-Amz-Date
+      - Authorization
+      - X-Api-Key
+      - X-Amz-Security-Token
+      - X-Amz-User-Agent
+      - X-RDC-Prosoft-Correlation-ID
+    allowCredentials: false
+  # logRetentionInDays: 3 # https://www.npmjs.com/package/serverless-plugin-log-retention
+
 provider:
   name: aws
   runtime: nodejs8.10
+  region: ${self:custom.config.awsRegion}
+  stage: ${self:custom.deployStage}
+  timeout: 60
+  memorySize: 192
+  vpc:
+    securityGroupIds:
+      - ${self:custom.config.vpcSecurityGroup}
+    subnetIds:
+      - ${self:custom.config.vpcSubnetA}
+      - ${self:custom.config.vpcSubnetB}
+#      - ${self:custom.config.vpcSubnetC}
+  environment:
+    NODE_ENV: ${self:custom.deployStage}
+    S3_BUCKET: ${self:custom.config.bucketName}
+  stackTags:
+    owner: Owner
+    component: Component
+    product: Product
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - "arn:aws:s3:::${self:custom.config.bucketName}/*"
+        - "arn:aws:s3:::${self:custom.config.bucketName}"
+    - Effect: Allow
+      Action:
+        - ec2:CreateNetworkInterface
+        - ec2:DescribeNetworkInterfaces
+        - ec2:DeleteNetworkInterface
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - cloudwatch:PutMetricData
+      Resource: "*"
+
+plugins:
+  - serverless-plugin-log-retention
+  - serverless-prune-plugin
 
 functions:
-  hello:
-    handler: handler.donwload
+  download:
+    handler: src/handler.download
     events:
       - http:
           path: /download
-          method: post
-          cors: true
+          method: POST
+          cors: ${self:custom.cors}
+
+resources:
+  Resources:
+    ApiGatewayDomainName:
+      Type: AWS::ApiGateway::DomainName
+      Properties:
+        CertificateArn: ${self:custom.config.acmCertArn}
+        DomainName: ${self:custom.config.domainName}.${self:custom.config.domainNameZone}
+    BasePathMapping:
+      Type: AWS::ApiGateway::BasePathMapping
+      DependsOn:
+        - DNSRecord
+      Properties:
+        DomainName: ${self:custom.config.domainName}.${self:custom.config.domainNameZone}
+        RestApiId: { Ref: ApiGatewayRestApi }
+        Stage: ${self:custom.deployStage}
+        BasePath: (none)
+    DNSRecord:
+      Type: AWS::Route53::RecordSet
+      Properties:
+        HostedZoneName: ${self:custom.config.domainNameZone}.
+        Name: ${self:custom.config.domainName}.${self:custom.config.domainNameZone}.
+        Type: CNAME
+        TTL: "60"
+        ResourceRecords:
+          - Fn::Join: [ "", [
+            { Ref: ApiGatewayRestApi },
+            ".execute-api.${self:custom.config.awsRegion}.amazonaws.com"
+          ]]
